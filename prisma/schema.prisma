@@ -1,0 +1,519 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum SubscriptionPlan {
+  free
+  standard
+  premium
+  enterprise
+}
+
+enum SubscriptionStatus {
+  active
+  inactive
+  expired
+  canceled
+}
+
+enum CompanyStatus {
+  active
+  inactive
+  suspended
+}
+
+enum UserRole {
+  super_admin
+  admin
+  manager
+  cashier
+  employee
+}
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+}
+
+enum ClientStatus {
+  active
+  inactive
+}
+
+enum ProductStatus {
+  active
+  inactive
+  out_of_stock
+}
+
+enum PaymentMethod {
+  cash
+  card
+  transfer
+  check
+  mobile_payment
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  partial
+  refunded
+}
+
+enum SaleStatus {
+  draft
+  completed
+  canceled
+  refunded
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  overdue
+  canceled
+}
+
+enum StockMovementType {
+  purchase
+  sale
+  adjustment
+  return
+  damage
+  inventory
+}
+
+enum NotificationType {
+  invoice
+  payment
+  stock_alert
+  system
+  reminder
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model Company {
+  id                  String              @id @default(cuid())
+  name                String              @db.VarChar(100)
+  siret               String?             @unique @db.VarChar(14)
+  phone               String?             @db.VarChar(20)
+  email               String              @unique @db.VarChar(100)
+  address             String?             @db.Text
+  city                String?             @db.VarChar(50)
+  postalCode          String?             @db.VarChar(10)
+  country             String?             @default("France") @db.VarChar(50)
+  logoUrl             String?             @db.VarChar(255)
+  
+  subscriptionPlan    SubscriptionPlan    @default(free)
+  subscriptionStart   DateTime?
+  subscriptionEnd     DateTime?
+  subscriptionStatus  SubscriptionStatus  @default(inactive)
+  
+  status              CompanyStatus       @default(active)
+  isTrial             Boolean             @default(true)
+  trialEnd            DateTime?
+  
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  users               User[]
+  clients             Client[]
+  products            Product[]
+  sales               Sale[]
+  invoices            Invoice[]
+  settings            Settings?
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  
+  @@index([subscriptionStatus])
+  @@index([status])
+  @@index([email])
+  @@map("companies")
+}
+
+model User {
+  id                    String              @id @default(cuid())
+  companyId             String?
+  email                 String              @unique @db.VarChar(100)
+  password              String              @db.VarChar(255)
+  firstName             String              @db.VarChar(50)
+  lastName              String              @db.VarChar(50)
+  phone                 String?             @db.VarChar(20)
+  avatarUrl             String?             @db.VarChar(255)
+  
+  role                  UserRole            @default(employee)
+  status                UserStatus          @default(active)
+  
+  emailVerified         Boolean             @default(false)
+  verificationToken     String?             @db.VarChar(255)
+  resetToken            String?             @db.VarChar(255)
+  resetTokenExpires     DateTime?
+  
+  lastLogin             DateTime?
+  loginAttempts         Int                 @default(0)
+  lockedUntil           DateTime?
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  company               Company?            @relation(fields: [companyId], references: [id])
+  sales                 Sale[]
+  stockMovements        StockMovement[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  refreshTokens         RefreshToken[]
+  
+  @@index([companyId])
+  @@index([role])
+  @@index([status])
+  @@index([email])
+  @@map("users")
+}
+
+model Client {
+  id                  String              @id @default(cuid())
+  companyId           String
+  firstName           String              @db.VarChar(50)
+  lastName            String              @db.VarChar(50)
+  email               String?             @db.VarChar(100)
+  phone               String?             @db.VarChar(20)
+  address             String?             @db.Text
+  city                String?             @db.VarChar(50)
+  postalCode          String?             @db.VarChar(10)
+  country             String?             @default("France") @db.VarChar(50)
+  
+  companyName         String?             @db.VarChar(100)
+  siret               String?             @db.VarChar(14)
+  vatNumber           String?             @db.VarChar(50)
+  website             String?             @db.VarChar(255)
+  notes               String?             @db.Text
+  
+  totalPurchases      Decimal             @default(0) @db.Decimal(10, 2)
+  totalOrders         Int                 @default(0)
+  lastPurchase        DateTime?
+  
+  category            String?             @db.VarChar(50)
+  tags                Json?               @db.JsonB
+  
+  status              ClientStatus        @default(active)
+  
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  company             Company             @relation(fields: [companyId], references: [id])
+  sales               Sale[]
+  invoices            Invoice[]
+  
+  @@index([companyId])
+  @@index([email])
+  @@index([status])
+  @@index([lastName, firstName])
+  @@map("clients")
+}
+
+model Product {
+  id                  String              @id @default(cuid())
+  companyId           String
+  name                String              @db.VarChar(100)
+  description         String?             @db.Text
+  reference           String              @unique @db.VarChar(50)
+  
+  purchasePrice       Decimal             @default(0) @db.Decimal(10, 2)
+  salePrice           Decimal             @db.Decimal(10, 2)
+  taxRate             Decimal             @default(20) @db.Decimal(5, 2)
+  
+  stockQuantity       Int                 @default(0)
+  stockMin            Int                 @default(0)
+  stockMax            Int?
+  
+  category            String?             @db.VarChar(50)
+  subcategory         String?             @db.VarChar(50)
+  barcode             String?             @db.VarChar(50)
+  unit                String?             @default("unité") @db.VarChar(20)
+  weight              Decimal?            @db.Decimal(10, 2)
+  imageUrl            String?             @db.VarChar(255)
+  
+  isComposable        Boolean             @default(false)
+  preparationTime     Int?
+  isAvailable         Boolean             @default(true)
+  
+  metadata            Json?               @db.JsonB
+  
+  status              ProductStatus       @default(active)
+  
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  company             Company             @relation(fields: [companyId], references: [id])
+  saleItems           SaleItem[]
+  stockMovements      StockMovement[]
+  
+  @@index([companyId])
+  @@index([reference])
+  @@index([category])
+  @@index([status])
+  @@index([stockQuantity])
+  @@map("products")
+}
+
+// ⚠️ IMPORTANT: La relation Sale ↔ Invoice est définie UNIQUEMENT dans Sale
+model Sale {
+  id                  String              @id @default(cuid())
+  companyId           String
+  clientId            String?
+  userId              String
+  invoiceId           String?             @unique
+  
+  reference           String              @unique @db.VarChar(50)
+  saleDate            DateTime            @default(now())
+  
+  subtotal            Decimal             @db.Decimal(10, 2)
+  taxAmount           Decimal             @default(0) @db.Decimal(10, 2)
+  discountAmount      Decimal             @default(0) @db.Decimal(10, 2)
+  discountPercent     Decimal             @default(0) @db.Decimal(5, 2)
+  total               Decimal             @db.Decimal(10, 2)
+  
+  paymentMethod       PaymentMethod
+  paymentStatus       PaymentStatus       @default(pending)
+  paymentDate         DateTime?
+  
+  status              SaleStatus          @default(draft)
+  
+  notes               String?             @db.Text
+  internalNotes       String?             @db.Text
+  
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  // Relations avec clés étrangères
+  company             Company             @relation(fields: [companyId], references: [id])
+  client              Client?             @relation(fields: [clientId], references: [id])
+  user                User                @relation(fields: [userId], references: [id])
+  invoice             Invoice?            @relation(fields: [invoiceId], references: [id])
+  
+  saleItems           SaleItem[]
+  stockMovements      StockMovement[]
+  
+  @@index([companyId])
+  @@index([clientId])
+  @@index([userId])
+  @@index([reference])
+  @@index([saleDate])
+  @@index([paymentStatus])
+  @@index([status])
+  @@map("sales")
+}
+
+model SaleItem {
+  id                  String              @id @default(cuid())
+  saleId              String
+  productId           String?
+  
+  quantity            Int
+  unitPrice           Decimal             @db.Decimal(10, 2)
+  discountAmount      Decimal             @default(0) @db.Decimal(10, 2)
+  total               Decimal             @db.Decimal(10, 2)
+  
+  productName         String              @db.VarChar(100)
+  productReference    String?             @db.VarChar(50)
+  notes               String?             @db.Text
+  
+  createdAt           DateTime            @default(now())
+  
+  sale                Sale                @relation(fields: [saleId], references: [id])
+  product             Product?            @relation(fields: [productId], references: [id])
+  
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+// ⚠️ IMPORTANT: Les relations sont définies UNIQUEMENT du côté qui a la clé étrangère
+// Invoice n'a PAS de @relation avec fields/references pour sale
+// La relation est définie dans Sale
+model Invoice {
+  id                  String              @id @default(cuid())
+  companyId           String
+  clientId            String?
+  saleId              String?             @unique
+  
+  invoiceNumber       String              @unique @db.VarChar(50)
+  invoiceDate         DateTime            @default(now())
+  dueDate             DateTime
+  
+  subtotal            Decimal             @db.Decimal(10, 2)
+  taxAmount           Decimal             @default(0) @db.Decimal(10, 2)
+  discountAmount      Decimal             @default(0) @db.Decimal(10, 2)
+  total               Decimal             @db.Decimal(10, 2)
+  
+  status              InvoiceStatus       @default(draft)
+  
+  sentAt              DateTime?
+  paidAt              DateTime?
+  pdfPath             String?             @db.VarChar(255)
+  
+  notes               String?             @db.Text
+  footerText          String?             @db.Text
+  
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  // Relations - UNIQUEMENT fields/references pour les clés étrangères
+  company             Company             @relation(fields: [companyId], references: [id])
+  client              Client?             @relation(fields: [clientId], references: [id])
+  
+  // ⚠️ PAS de @relation pour sale ! La relation est définie dans Sale via invoiceId
+  sale                Sale?               // <- Pas de @relation ici !
+  
+  @@index([companyId])
+  @@index([clientId])
+  @@index([invoiceNumber])
+  @@index([invoiceDate])
+  @@index([dueDate])
+  @@index([status])
+  @@map("invoices")
+}
+
+model StockMovement {
+  id                  String              @id @default(cuid())
+  productId           String
+  userId              String
+  saleId              String?
+  
+  quantity            Int
+  type                StockMovementType
+  
+  beforeStock         Int
+  afterStock          Int
+  
+  reason              String?             @db.Text
+  reference           String?             @db.VarChar(50)
+  
+  createdAt           DateTime            @default(now())
+  
+  product             Product             @relation(fields: [productId], references: [id])
+  user                User                @relation(fields: [userId], references: [id])
+  sale                Sale?               @relation(fields: [saleId], references: [id])
+  
+  @@index([productId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+model Settings {
+  id                  String              @id @default(cuid())
+  companyId           String              @unique
+  
+  currency            String              @default("EUR") @db.VarChar(3)
+  taxDefault          Decimal             @default(20) @db.Decimal(5, 2)
+  taxIncluded         Boolean             @default(true)
+  
+  invoicePrefix       String              @default("FACT-") @db.VarChar(10)
+  invoiceNextNumber   Int                 @default(1)
+  invoiceFooter       String?             @db.Text
+  receiptFooter       String?             @db.Text
+  
+  language            String              @default("fr") @db.VarChar(5)
+  timezone            String              @default("Europe/Paris") @db.VarChar(50)
+  
+  emailNotifications  Boolean             @default(true)
+  smsNotifications    Boolean             @default(false)
+  
+  primaryColor        String              @default("#3B82F6") @db.VarChar(7)
+  logoUrl             String?             @db.VarChar(255)
+  
+  modules             Json?               @db.JsonB
+  
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  company             Company             @relation(fields: [companyId], references: [id])
+  
+  @@index([companyId])
+  @@map("settings")
+}
+
+model Notification {
+  id                  String              @id @default(cuid())
+  companyId           String
+  userId              String?
+  
+  type                NotificationType
+  title               String              @db.VarChar(255)
+  message             String              @db.Text
+  isRead              Boolean             @default(false)
+  link                String?             @db.VarChar(255)
+  
+  sentAt              DateTime            @default(now())
+  readAt              DateTime?
+  
+  company             Company             @relation(fields: [companyId], references: [id])
+  user                User?               @relation(fields: [userId], references: [id])
+  
+  @@index([companyId])
+  @@index([userId])
+  @@index([isRead])
+  @@index([sentAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id                  String              @id @default(cuid())
+  companyId           String
+  userId              String
+  
+  action              String              @db.VarChar(50)
+  tableName           String              @db.VarChar(50)
+  recordId            String              @db.VarChar(50)
+  oldValues           Json?               @db.JsonB
+  newValues           Json?               @db.JsonB
+  ipAddress           String?             @db.VarChar(45)
+  userAgent           String?             @db.Text
+  
+  createdAt           DateTime            @default(now())
+  
+  company             Company             @relation(fields: [companyId], references: [id])
+  user                User                @relation(fields: [userId], references: [id])
+  
+  @@index([companyId])
+  @@index([userId])
+  @@index([tableName])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model RefreshToken {
+  id                  String              @id @default(cuid())
+  userId              String
+  token               String              @unique @db.VarChar(255)
+  expiresAt           DateTime
+  isRevoked           Boolean             @default(false)
+  
+  createdAt           DateTime            @default(now())
+  
+  user                User                @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
