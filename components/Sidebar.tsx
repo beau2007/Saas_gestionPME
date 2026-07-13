@@ -231,29 +231,19 @@ export default function Sidebar() {
           })}
         </div>
 
-        {/* Section aide en bas de la navigation */}
-        <div className="mt-6 border-t border-gray-200 pt-4">
-          <Link
-            href="/dashboard-user/help"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-          >
-            <HelpCircle className="h-5 w-5 flex-shrink-0" />
-            <span>Centre d'aide</span>
-          </Link>
-        </div>
       </nav>
 
       {/* Footer utilisateur - Version responsive */}
-      <div className="border-t border-gray-200 p-2 sm:p-3">
-        <div className="flex items-center gap-2 rounded-lg bg-gray-50 p-2 transition-colors hover:bg-gray-100 sm:gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-semibold text-white shadow-sm sm:h-9 sm:w-9 sm:text-sm">
+      <div className="  p-2 sm:p-3">
+        <div className="flex items-center gap-2 rounded-lg bg-blue-600 p-2 transition-colors hover:bg-blue-700 sm:gap-3">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br  text-xs font-semibold text-white shadow-sm sm:h-9 sm:w-9 sm:text-sm">
             {getUserInitials()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium text-gray-900 sm:text-sm">
+            <p className="truncate text-xs font-medium text-white sm:text-sm">
               {getFullName()}
             </p>
-            <p className="truncate text-[10px] text-gray-500 sm:text-xs">
+            <p className="truncate text-[10px] sm:text-xs">
               {user?.role === "admin" ? "Administrateur" : 
                user?.role === "super_admin" ? "Super Admin" :
                user?.role === "manager" ? "Manager" :
@@ -263,12 +253,12 @@ export default function Sidebar() {
           <button
             onClick={handleLogout}
             disabled={isLoggingOut}
-            className="flex-shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 disabled:opacity-50"
+            className="flex-shrink-0 rounded-lg p-1.5 text- transition-colors bg-red-500 hover:bg-red-600 hover:text-white disabled:opacity-50"
           >
             {isLoggingOut ? (
               <Loader2 className="h-3 w-3 animate-spin sm:h-4 sm:w-4" />
             ) : (
-              <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
+              <LogOut className="h-3 w-3 sm:h-4 sm:w-4 " />
             )}
           </button>
         </div>

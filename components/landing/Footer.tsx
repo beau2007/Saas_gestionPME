@@ -7,7 +7,7 @@ import {
   Phone,
   MapPin
 } from "lucide-react";
-import Logo from "../shared/Logo";
+import Image from "next/image";
 
 const footerLinks = {
   produit: [
@@ -48,12 +48,15 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link href="/" className="flex items-center space-x-2">
-              <Logo />
+                <Image
+                  src="/assets/images/Design_sans_titre.png"
+                  alt="Logo Vynex"
+                  className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 p-2 shadow-md"
+                  width={50}
+                  height={50}
+                />
+                <span className="text-3xl font-semibold text-blue-600">Vynex</span>
             </Link>
-            <p className="mt-4 text-sm">
-              La solution tout-en-un pour gérer votre entreprise simplement.
-              Restaurants, commerces et PME.
-            </p>
             <div className="mt-6 space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
